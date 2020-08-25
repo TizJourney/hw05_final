@@ -169,6 +169,66 @@ class PostsTest(PostsTestWithHelpers):
             msg='Ошибка вызова api редактирования поста')
 
         self._check_content_pages(edited_text_content)
+    
+    def _check_number_comments(self):
+        return self.post.comments.all().count()
+
+    def _check_comment_content(self, comment_text):
+        comment = self.post.comments.all().latest('created')
+        self.assertEqual(
+            comment.text, comment_text,
+            msg='Содержимо комментария некорректно'
+        )
+
+    def test_only_authorized_user_can_add_comments(self):
+        comment_text = 'текст комментария'
+        self.assertEqual(
+            self._check_number_comments(), 0,
+            msg='Количество комментариев до проверки должно быть 0'
+        )
+
+        response = self.authorized_client.post(
+            reverse(
+                'add_comment',
+                kwargs={
+                    'username': DEFAULT_USERNAME, 'post_id': self.post.id
+                }
+            ),
+            {
+                'text': comment_text,
+            },
+            follow=True)
+        self.assertEqual(
+            response.status_code, 200,
+            msg='Ошибка вызова api добавления комментария')
+
+        self.assertEqual(
+            self._check_number_comments(), 1,
+            msg='Теперь должен быть 1 комментарий'
+        )
+        self._check_comment_content(comment_text)
+
+        response = self.not_authorized_client.post(
+            reverse(
+                'add_comment',
+                kwargs={
+                    'username': DEFAULT_USERNAME, 'post_id': self.post.id
+                }
+            ),
+            {
+                'text': comment_text,
+            },
+            follow=True)
+
+        self.assertEqual(
+            response.status_code, 200,
+            msg='Ошибка вызова api добавления комментария')
+
+        self.assertEqual(
+            self._check_number_comments(), 1,
+            msg='Количество комментариев не должно изменится'
+        )
+
 
 
 class FollowerTest(PostsTestWithHelpers):
