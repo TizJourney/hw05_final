@@ -1,0 +1,12 @@
+{% extends "posts/post_edit.html" %}
+{% block title %}Новый пост{% endblock %}
+{% block header %}{% endblock %}
+
+{% block form_title %}Новый пост{% endblock %}
+
+{% block form_content %}
+    <form method="post" enctype="multipart/form-data" action="{% url 'new_post' %}">
+        {% csrf_token %}
+        {% include 'base/common_form.html' with submit_button_name='Создать' %}           
+    </form>
+{% endblock %}

@@ -1,0 +1,27 @@
+{% extends "base/base.html" %}
+{% block title %}Редактировать пост{% endblock %}
+{% block header %}{% endblock %}
+
+{% block content %}
+{% load user_filters %}
+
+<div class="row justify-content-center">
+    <div class="col-md-8 p-5">
+        <div class="card">
+            <div class="card-header">
+                {% block form_title %}
+                    Редактировать пост
+                {% endblock %}
+            </div>
+            <div class="card-body">
+                {% block form_content %}                
+                    <form method="post" enctype="multipart/form-data" action="{% url 'post_edit' post_id=post.id username=post.author.get_username %}">
+                        {% csrf_token %}
+                        {% include 'base/common_form.html' with submit_button_name='Редактировать' %}
+                    </form>
+                {% endblock %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

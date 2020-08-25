@@ -1,0 +1,19 @@
+{% extends "base/base.html" %}
+{% block title %}Профиль @{{profile_user.get_username }} {% endblock %}
+{% block header %}{% endblock %}
+{% block content %}
+<div class="row">
+    <div class="col-md-3 mb-3 mt-1">
+        {% include 'base/profile_info.html' %}
+    </div>    
+    <div class="col-md-9">
+        {% for post in page %}
+            {% include 'base/post.html' %}
+        {% endfor %}
+        {% if page.has_other_pages %}
+            {% include "base/paginator.html" with items=page paginator=paginator %}
+        {% endif %}
+    </div>
+</div>    
+{% endblock %}
+

@@ -1,0 +1,32 @@
+<div class="card">
+    <div class="card-body">
+            <div class="h2">{{ profile_user.get_full_name }}</div>
+            <div class="h3 text-muted">@{{ profile_user.get_username }}</div>
+    </div>
+    <ul class="list-group list-group-flush">
+            <li class="list-group-item">
+                    <div class="h6 text-muted">
+                    Подписчиков: {{ follower_count }} <br />
+                    Подписан: {{ following_count }}
+                    </div>
+            </li>
+            <li class="list-group-item">
+                    <div class="h6 text-muted">
+                        Записей: {{ post_count }}
+                    </div>
+            </li>
+            <li class="list-group-item">
+                {% if following %}
+                <a class="btn btn-lg btn-light" 
+                        href="{% url 'profile_unfollow' profile_user.username %}" role="button"> 
+                        Отписаться 
+                </a> 
+                {% else %}
+                <a class="btn btn-lg btn-primary" 
+                        href="{% url 'profile_follow' profile_user.username %}" role="button">
+                Подписаться 
+                </a>
+                {% endif %}
+            </li>            
+    </ul>
+</div>

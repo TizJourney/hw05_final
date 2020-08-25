@@ -1,0 +1,12 @@
+{% extends "base/base.html" %}
+{% block title %}Подписки пользователья @{{ follower }}{% endblock %}
+{% block header %}Подписки пользователья @{{ follower }}{% endblock %}
+{% block content %}
+    {% include "base/menu.html" with index=False %}
+    {% for post in page %}
+        {% include 'base/post.html' %}
+    {% endfor %}
+    {% if page.has_other_pages %}
+        {% include "base/paginator.html" with items=page paginator=paginator %}
+    {% endif %}
+{% endblock %}
