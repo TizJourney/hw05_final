@@ -35,7 +35,7 @@ def _prepare_profile_content(profile_user, guest_user=None):
     following_count = profile_user.following.all().count()
 
     following = False
-    if guest_user is not None:
+    if guest_user is not None and guest_user.is_authenticated:
         following = profile_user.follower.filter(user=guest_user).exists()
 
     context = {
@@ -79,7 +79,7 @@ def profile(request, username):
     post_list = user.posts.all()
 
     context = _prepare_post_content(post_list, page_number)
-    context.update(_prepare_profile_content(user, request.user or None))
+    context.update(_prepare_profile_content(user, request.user))
 
     return render(request, 'posts/profile.html', context)
 
@@ -96,7 +96,7 @@ def post_view(request, username, post_id):
         'comment_form': comment_form,
         'comments': comments,
     }
-    context.update(_prepare_profile_content(post.author, request.user or None))
+    context.update(_prepare_profile_content(post.author, request.user))
 
     return render(request, 'posts/post_view.html', context)
 
