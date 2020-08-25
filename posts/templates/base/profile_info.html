@@ -15,6 +15,7 @@
                         Записей: {{ post_count }}
                     </div>
             </li>
+            {% if profile_user.username != user.get_username %}
             <li class="list-group-item">
                 {% if following %}
                 <a class="btn btn-lg btn-light" 
@@ -27,6 +28,7 @@
                 Подписаться 
                 </a>
                 {% endif %}
-            </li>            
+            </li>
+            {% endif %}
     </ul>
 </div>
