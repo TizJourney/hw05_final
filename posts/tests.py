@@ -23,30 +23,30 @@ def _create_user(username=DEFAULT_USERNAME):
         last_name=DEFAULT_LAST_NAME_TEMPLATE.format(username),
     )
 
+#набор вспомогательных классов для тестов
 
-class PostsTest(TestCase):
-    def setUp(self):
-        self.user = _create_user()
 
-        self.authorized_client = Client()
-        self.authorized_client.force_login(self.user)
-
-        self.not_authorized_client = Client()
-
-        self.text_content = DEFAULT_POST_TEXT
-        self.post = Post.objects.create(
-            text=self.text_content, author=self.user)
-
+class PostsTestWithHelpers(TestCase):
     def _check_post_content(self, post, post_text):
         self.assertIsInstance(post, Post, msg='Тип содержимого не пост')
         self.assertEqual(
             post.text, post_text,
             msg='Текст поста не соответствует')
 
-    def _check_paginated_page_response(self, response, post_text):
+    def _check_paginated_page_empty_response(self, response):
         self.assertEqual(
             response.status_code, 200,
             msg='Ошибка вызова api создания поста')
+        self.assertEqual(
+            len(response.context['page']), 0,
+            msg='В ответе есть какое-то содержимое'
+        )
+
+
+    def _check_paginated_page_response(self, response, post_text):
+        self.assertEqual(
+            response.status_code, 200,
+            msg='Ошибка вызова api')
         self.assertEqual(
             len(response.context['page']), 1,
             msg='В ответе нет страницы с постом'
@@ -81,6 +81,20 @@ class PostsTest(TestCase):
             response.context['post'], Post, msg='Внутри страницы нет поста')
 
         self._check_post_content(response.context['post'], post_text)
+
+
+class PostsTest(PostsTestWithHelpers):
+    def setUp(self):
+        self.user = _create_user()
+
+        self.authorized_client = Client()
+        self.authorized_client.force_login(self.user)
+
+        self.not_authorized_client = Client()
+
+        self.text_content = DEFAULT_POST_TEXT
+        self.post = Post.objects.create(
+            text=self.text_content, author=self.user)
 
     def test_profile_url(self):
         response = self.authorized_client.get(
@@ -157,18 +171,31 @@ class PostsTest(TestCase):
         self._check_content_pages(edited_text_content)
 
 
-class FollowerTest(TestCase):
+class FollowerTest(PostsTestWithHelpers):
     def setUp(self):
-        self.user = _create_user()
-
+        #автор, авторизован
         self.author_username = 'author'
-
         self.author_user = _create_user(self.author_username)
 
+        self.author_client = Client()
+        self.author_client.force_login(self.author_user)
+        self.author_first_post_text = 'first post'
+        #пользователь, ни на кого не подписан
+        self.user = _create_user()
+
+        #авторизованный клиент пользователя
         self.authorized_client = Client()
         self.authorized_client.force_login(self.user)
 
-        self.not_authorized_client = Client()
+        #пользователь, подписан на автора, авторизован
+        self.follower_username = 'follower'
+        self.follower_user = _create_user(self.follower_username)
+        self.follower_client = Client()
+        self.follower_client.force_login(self.follower_user)
+        Follow.objects.create(
+            user=self.follower_user,
+            author=self.author_user
+        )
 
     def _calculated_follow_count(self, follower, author=None):
         if author is not None:
@@ -178,7 +205,6 @@ class FollowerTest(TestCase):
             ).count()
 
         return Follow.objects.filter(user=follower).count()
-
 
     def test_authorized_user_follow_and_unfollow(self):
         self.assertEqual(
@@ -213,9 +239,40 @@ class FollowerTest(TestCase):
         self.assertEqual(
             response.status_code, 200,
             msg='Ошибка при попытке отписаться от автора')
-        
+
         self.assertEqual(
             self._calculated_follow_count(self.user, self.author_user), 0,
             msg='Не уменьшилось количество подписок после отписки'
         )
 
+    def test_author_posts_on_follower(self):
+
+        response = self.authorized_client.get(reverse('follow_index'))
+        #не должен видеть постов
+        self._check_paginated_page_empty_response(response)
+
+        response = self.follower_client.get(reverse('follow_index'))
+        #не должен видеть постов
+        self._check_paginated_page_empty_response(response)
+
+        #автор пишет пост
+        response = self.author_client.post(
+            reverse('new_post'),
+            {
+                'text': self.author_first_post_text,
+            },
+            follow=True)
+        self.assertEqual(
+            response.status_code, 200,
+            msg='Ошибка вызова api создания поста')
+
+        response = self.authorized_client.get(reverse('follow_index'))
+        #не подписанный пользователь все ещё не должен видеть постов
+        self._check_paginated_page_empty_response(response)
+
+        response = self.follower_client.get(reverse('follow_index'))
+        #подписанный пользователь должен увидеть новый пост
+        self._check_paginated_page_response(
+            response,
+            self.author_first_post_text
+        )
