@@ -11,7 +11,7 @@ DEFAULT_EMAIL_TEMPLATE = '{}@domain.com'
 DEFAULT_FIRST_NAME_TEMPLATE = '{}_first_name'
 DEFAULT_LAST_NAME_TEMPLATE = '{}_last_name'
 
-DEFAULT_POST_TEXT = 'post text'
+DEFAULT_POST_TEXT = 'текст поста'
 
 NOT_EXISTING_URL = '/not_existring_url/'
 
@@ -51,18 +51,20 @@ class PostsTestWithHelpers(TestCase):
         self.assertEqual(
             response.status_code, 200,
             msg='Ошибка вызова api')
+
         self.assertEqual(
-            len(response.context['page']), 1 if post_contexts else 0,
-            msg='В ответе нет страницы с постом'
+            response.context['page'].number, 1,
+            msg='Количество страниц с ответами не совпадает')
+
+        self.assertEqual(
+            len(response.context['page']), len(post_contexts),
+            msg='Количество постов в ответе не совпадает'
         )
 
         if not post_contexts:
             #пустая страница, дальше проверять нет смысла
             return
 
-        self.assertEqual(
-            response.context['page'].number, len(post_contexts),
-            msg='Количество постов с странице не совпадает')
         
         for post_item, context in zip(response.context['page'], post_contexts):
             self.assertIsInstance(
@@ -70,17 +72,17 @@ class PostsTestWithHelpers(TestCase):
                 Post,
                 msg='Тип содержимого не пост'
             )
-            self._check_post_content(response.context['page'][0], context)
+            self._check_post_content(post_item, context)
 
-    def _check_content_pages(self, post_context, client):
+    def _check_content_pages(self, posts_context, client):
         response = client.get(reverse('index'))
 
-        self._check_paginated_page_response(response, post_context)
+        self._check_paginated_page_response(response, posts_context)
 
         response = client.get(
             reverse('profile', kwargs={'username': DEFAULT_USERNAME})
         )
-        self._check_paginated_page_response(response, post_context)
+        self._check_paginated_page_response(response, posts_context)
 
 
     def _check_single_post(self, post_context, client, username, post_id):
@@ -116,6 +118,7 @@ class PostsTest(PostsTestWithHelpers):
         self.text_content = DEFAULT_POST_TEXT
         self.post = Post.objects.create(
             text=self.text_content, author=self.user)
+        self.post_context = PostContext(self.text_content)            
 
     def test_404(self):
         response = self.authorized_client.get(NOT_EXISTING_URL)
@@ -130,7 +133,7 @@ class PostsTest(PostsTestWithHelpers):
 
     def test_create_new_post_after_authorization(self):
         posts_on_start = Post.objects.all().count()
-        new_post_text = 'new post text'
+        new_post_text = 'новый текст поста'
         response = self.authorized_client.post(
             reverse('new_post'),
             {
@@ -174,17 +177,19 @@ class PostsTest(PostsTestWithHelpers):
         )
 
     def test_post_on_content_pages(self):
-        post_context = PostContext(DEFAULT_POST_TEXT)
-        self._check_content_pages([post_context], self.not_authorized_client)
+        self._check_content_pages(
+            [self.post_context],
+            self.not_authorized_client
+        )
         self._check_single_post(
-            post_context,
+            self.post_context,
             self.not_authorized_client,
             DEFAULT_USERNAME,
             self.post.id
         )
 
     def test_editied_post_on_content_pages(self):
-        edited_text_content = 'changed post text'
+        edited_text_content = 'редактированный текст'
 
         response = self.authorized_client.post(
             reverse(
@@ -214,6 +219,41 @@ class PostsTest(PostsTestWithHelpers):
             self.post.id
         )
 
+    def test_image_content_pages(self):
+        image_post_text_content = 'пост картинкой'
+
+        #добавим пост с картинкой
+        response = self.authorized_client.post(
+            reverse('new_post'),
+            {
+                'text': image_post_text_content,
+                # 'image': image,
+            },
+            follow=True)
+
+        self.assertEqual(
+            response.status_code, 200,
+            msg='Ошибка вызова api создания нового поста')
+
+        image_post_context = PostContext(
+            image_post_text_content,
+            contain_image=True
+        )
+        self._check_content_pages(
+            [image_post_context, self.post_context],
+            self.authorized_client
+        )
+
+        new_post = Post.objects.latest('pub_date')
+        self._check_single_post(
+            image_post_context,
+            self.authorized_client,
+            DEFAULT_USERNAME,
+            new_post.id
+        )
+
+
+
     def _check_number_comments(self):
         return self.post.comments.all().count()
 
@@ -221,7 +261,7 @@ class PostsTest(PostsTestWithHelpers):
         comment = self.post.comments.all().latest('created')
         self.assertEqual(
             comment.text, comment_text,
-            msg='Содержимо комментария некорректно'
+            msg='Содержимое комментария некорректно'
         )
 
     def test_only_authorized_user_can_add_comments(self):
