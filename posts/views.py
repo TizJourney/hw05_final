@@ -36,7 +36,7 @@ def _prepare_profile_content(profile_user, guest_user=None):
 
     following = False
     if guest_user is not None and guest_user.is_authenticated:
-        following = profile_user.follower.filter(user=guest_user).exists()
+        following = guest_user.follower.filter(author=profile_user).exists()
 
     context = {
         'post_count': post_count,
@@ -185,15 +185,14 @@ def profile_follow(request, username):
 
     #нельзя подписываться на самого себя
     if author == request.user:
-        return redirect('index')
+        return redirect('profile', username=username)
 
     follow, created = Follow.objects.get_or_create(
         author=author,
         user=request.user
     )
 
-    #todo: сделать редирект на профиль пользователя
-    return redirect('index')
+    return redirect('profile', username=username)
 
 
 @login_required
@@ -209,5 +208,4 @@ def profile_unfollow(request, username):
     )
     follow.delete()
 
-    #todo: сделать редирект на профиль пользователя
-    return redirect('index')
+    return redirect('profile', username=username)
