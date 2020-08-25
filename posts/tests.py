@@ -13,6 +13,8 @@ DEFAULT_LAST_NAME_TEMPLATE = '{}_last_name'
 
 DEFAULT_POST_TEXT = 'post text'
 
+NOT_EXISTING_URL = '/not_existring_url/'
+
 
 def _create_user(username=DEFAULT_USERNAME):
     return User.objects.create_user(
@@ -22,8 +24,6 @@ def _create_user(username=DEFAULT_USERNAME):
         first_name=DEFAULT_FIRST_NAME_TEMPLATE.format(username),
         last_name=DEFAULT_LAST_NAME_TEMPLATE.format(username),
     )
-
-#набор вспомогательных классов для тестов
 
 
 class PostsTestWithHelpers(TestCase):
@@ -41,7 +41,6 @@ class PostsTestWithHelpers(TestCase):
             len(response.context['page']), 0,
             msg='В ответе есть какое-то содержимое'
         )
-
 
     def _check_paginated_page_response(self, response, post_text):
         self.assertEqual(
@@ -95,6 +94,11 @@ class PostsTest(PostsTestWithHelpers):
         self.text_content = DEFAULT_POST_TEXT
         self.post = Post.objects.create(
             text=self.text_content, author=self.user)
+
+    def test_404(self):
+        response = self.authorized_client.get(NOT_EXISTING_URL)
+        self.assertEqual(response.status_code, 404)
+
 
     def test_profile_url(self):
         response = self.authorized_client.get(
@@ -169,7 +173,7 @@ class PostsTest(PostsTestWithHelpers):
             msg='Ошибка вызова api редактирования поста')
 
         self._check_content_pages(edited_text_content)
-    
+
     def _check_number_comments(self):
         return self.post.comments.all().count()
 
@@ -228,7 +232,6 @@ class PostsTest(PostsTestWithHelpers):
             self._check_number_comments(), 1,
             msg='Количество комментариев не должно изменится'
         )
-
 
 
 class FollowerTest(PostsTestWithHelpers):
