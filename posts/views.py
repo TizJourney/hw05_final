@@ -183,6 +183,10 @@ def profile_follow(request, username):
     #нельзя подписываться на несуществующего пользователя
     author = get_object_or_404(User, username=username)
 
+    #нельзя подписываться на самого себя
+    if author == request.user:
+        return redirect('index')
+
     follow, created = Follow.objects.get_or_create(
         author=author,
         user=request.user
