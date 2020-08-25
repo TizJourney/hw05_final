@@ -73,14 +73,14 @@ class Comment(models.Model):
     text = models.TextField(
         'Комментарий',
         help_text='Содержимое комментария. Обязательно к заполнению.')
-    pub_date = models.DateTimeField(
-        'Дата комментария',
+    created = models.DateTimeField(
+        'Время создания',
         auto_now_add=True,
-        help_text='Дата комментария. По-умолчанию выставляется текущее время.'
+        help_text='Время создания. По-умолчанию выставляется текущее время.'
     )
 
     class Meta:
-        ordering = ('-pub_date',)
+        ordering = ('-created',)
 
     def __str__(self):
         text_sample = self.text[:12]
