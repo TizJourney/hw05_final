@@ -2,28 +2,31 @@ from django.contrib.auth import get_user_model
 from django.test import Client, TestCase
 from django.urls import reverse
 
-from .models import Post
+from .models import Post, Follow
 
 User = get_user_model()
 
 DEFAULT_USERNAME = 'normal'
-DEFAULT_EMAIL = 'email@domain.com'
-DEFAULT_PASSWORD = '1234'
-DEFAULT_FIRST_NAME = 'name'
-DEFAULT_LAST_NAME = 'last_name'
+DEFAULT_EMAIL_TEMPLATE = '{}@domain.com'
+DEFAULT_FIRST_NAME_TEMPLATE = '{}_first_name'
+DEFAULT_LAST_NAME_TEMPLATE = '{}_last_name'
 
 DEFAULT_POST_TEXT = 'post text'
 
 
+def _create_user(username=DEFAULT_USERNAME):
+    return User.objects.create_user(
+        username=username,
+        email=DEFAULT_EMAIL_TEMPLATE.format(username),
+        password=username,
+        first_name=DEFAULT_FIRST_NAME_TEMPLATE.format(username),
+        last_name=DEFAULT_LAST_NAME_TEMPLATE.format(username),
+    )
+
+
 class PostsTest(TestCase):
     def setUp(self):
-        self.user = User.objects.create_user(
-            username=DEFAULT_USERNAME,
-            email=DEFAULT_EMAIL,
-            password=DEFAULT_PASSWORD,
-            first_name=DEFAULT_FIRST_NAME,
-            last_name=DEFAULT_LAST_NAME
-        )
+        self.user = _create_user()
 
         self.authorized_client = Client()
         self.authorized_client.force_login(self.user)
@@ -102,7 +105,7 @@ class PostsTest(TestCase):
         self.assertEqual(
             posts_after, posts_on_start + 1,
             msg='Количество постов не увеличилось на 1')
-        
+
         new_post = Post.objects.latest('pub_date')
         self._check_post_content(new_post, new_post_text)
 
@@ -152,3 +155,67 @@ class PostsTest(TestCase):
             msg='Ошибка вызова api редактирования поста')
 
         self._check_content_pages(edited_text_content)
+
+
+class FollowerTest(TestCase):
+    def setUp(self):
+        self.user = _create_user()
+
+        self.author_username = 'author'
+
+        self.author_user = _create_user(self.author_username)
+
+        self.authorized_client = Client()
+        self.authorized_client.force_login(self.user)
+
+        self.not_authorized_client = Client()
+
+    def _calculated_follow_count(self, follower, author=None):
+        if author is not None:
+            return Follow.objects.filter(
+                user=follower,
+                author=author
+            ).count()
+
+        return Follow.objects.filter(user=follower).count()
+
+
+    def test_authorized_user_follow_and_unfollow(self):
+        self.assertEqual(
+            self._calculated_follow_count(self.user), 0,
+            msg='Не должно быть подписок до начала теста'
+        )
+
+        response = self.authorized_client.get(
+            reverse('profile_follow', args=(self.author_username,)),
+            follow=True
+        )
+
+        self.assertEqual(
+            response.status_code, 200,
+            msg='Ошибка при попытке подписаться на автора')
+
+        self.assertEqual(
+            self._calculated_follow_count(self.user), 1,
+            msg='Не добавилась подписка'
+        )
+
+        self.assertEqual(
+            self._calculated_follow_count(self.user, self.author_user), 1,
+            msg='Не добавилась подписка на автора'
+        )
+
+        response = self.authorized_client.get(
+            reverse('profile_unfollow', args=(self.author_username,)),
+            follow=True
+        )
+
+        self.assertEqual(
+            response.status_code, 200,
+            msg='Ошибка при попытке отписаться от автора')
+        
+        self.assertEqual(
+            self._calculated_follow_count(self.user, self.author_user), 0,
+            msg='Не уменьшилось количество подписок после отписки'
+        )
+
