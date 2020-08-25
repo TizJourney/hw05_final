@@ -25,12 +25,17 @@ def _create_user(username=DEFAULT_USERNAME):
         last_name=DEFAULT_LAST_NAME_TEMPLATE.format(username),
     )
 
+class PostContext:
+    def __init__(self, post_text, contain_image=False):
+        self.text = post_text
+        self.contain_image = contain_image
+
 
 class PostsTestWithHelpers(TestCase):
-    def _check_post_content(self, post, post_text):
+    def _check_post_content(self, post, post_context):
         self.assertIsInstance(post, Post, msg='Тип содержимого не пост')
         self.assertEqual(
-            post.text, post_text,
+            post.text, post_context.text,
             msg='Текст поста не соответствует')
 
     def _check_paginated_page_empty_response(self, response):
@@ -42,35 +47,52 @@ class PostsTestWithHelpers(TestCase):
             msg='В ответе есть какое-то содержимое'
         )
 
-    def _check_paginated_page_response(self, response, post_text):
+    def _check_paginated_page_response(self, response, post_contexts):
         self.assertEqual(
             response.status_code, 200,
             msg='Ошибка вызова api')
         self.assertEqual(
-            len(response.context['page']), 1,
+            len(response.context['page']), 1 if post_contexts else 0,
             msg='В ответе нет страницы с постом'
         )
+
+        if not post_contexts:
+            #пустая страница, дальше проверять нет смысла
+            return
+
         self.assertEqual(
-            response.context['page'].number, 1,
-            msg='Внутри страницы нет поста')
-        self.assertIsInstance(
-            response.context['page'][0], Post, msg='Тип содержимого не пост')
-        self._check_post_content(response.context['page'][0], post_text)
+            response.context['page'].number, len(post_contexts),
+            msg='Количество постов с странице не совпадает')
+        
+        for post_item, context in zip(response.context['page'], post_contexts):
+            self.assertIsInstance(
+                post_item,
+                Post,
+                msg='Тип содержимого не пост'
+            )
+            self._check_post_content(response.context['page'][0], context)
 
-    def _check_content_pages(self, post_text=DEFAULT_POST_TEXT):
-        response = self.not_authorized_client.get(reverse('index'))
-        self._check_paginated_page_response(response, post_text)
+    def _check_content_pages(self, post_context, client):
+        response = client.get(reverse('index'))
 
-        response = self.not_authorized_client.get(
+        self._check_paginated_page_response(response, post_context)
+
+        response = client.get(
             reverse('profile', kwargs={'username': DEFAULT_USERNAME})
         )
-        self._check_paginated_page_response(response, post_text)
+        self._check_paginated_page_response(response, post_context)
 
-        response = self.not_authorized_client.get(
+
+    def _check_single_post(self, post_context, client, username, post_id):
+        response = client.get(
             reverse(
                 'post',
                 kwargs={
-                    'username': DEFAULT_USERNAME, 'post_id': self.post.id}))
+                    'username': username,
+                    'post_id': post_id
+                }
+            )
+        )
 
         self.assertEqual(
             response.status_code, 200,
@@ -79,7 +101,7 @@ class PostsTestWithHelpers(TestCase):
         self.assertIsInstance(
             response.context['post'], Post, msg='Внутри страницы нет поста')
 
-        self._check_post_content(response.context['post'], post_text)
+        self._check_post_content(response.context['post'], post_context)
 
 
 class PostsTest(PostsTestWithHelpers):
@@ -125,7 +147,8 @@ class PostsTest(PostsTestWithHelpers):
             msg='Количество постов не увеличилось на 1')
 
         new_post = Post.objects.latest('pub_date')
-        self._check_post_content(new_post, new_post_text)
+        new_post_context = PostContext(new_post_text)
+        self._check_post_content(new_post, new_post_context)
 
     def test_create_new_post_not_authorized(self):
         posts_on_start = Post.objects.all().count()
@@ -151,7 +174,14 @@ class PostsTest(PostsTestWithHelpers):
         )
 
     def test_post_on_content_pages(self):
-        self._check_content_pages()
+        post_context = PostContext(DEFAULT_POST_TEXT)
+        self._check_content_pages([post_context], self.not_authorized_client)
+        self._check_single_post(
+            post_context,
+            self.not_authorized_client,
+            DEFAULT_USERNAME,
+            self.post.id
+        )
 
     def test_editied_post_on_content_pages(self):
         edited_text_content = 'changed post text'
@@ -172,7 +202,17 @@ class PostsTest(PostsTestWithHelpers):
             response.status_code, 200,
             msg='Ошибка вызова api редактирования поста')
 
-        self._check_content_pages(edited_text_content)
+        edited_post_context = PostContext(edited_text_content)
+        self._check_content_pages(
+            [edited_post_context],
+            self.authorized_client
+        )
+        self._check_single_post(
+            edited_post_context,
+            self.authorized_client,
+            DEFAULT_USERNAME,
+            self.post.id
+        )
 
     def _check_number_comments(self):
         return self.post.comments.all().count()
@@ -312,11 +352,11 @@ class FollowerTest(PostsTestWithHelpers):
 
         response = self.authorized_client.get(reverse('follow_index'))
         #не должен видеть постов
-        self._check_paginated_page_empty_response(response)
+        self._check_paginated_page_response(response, [])
 
         response = self.follower_client.get(reverse('follow_index'))
         #не должен видеть постов
-        self._check_paginated_page_empty_response(response)
+        self._check_paginated_page_response(response, [])
 
         #автор пишет пост
         response = self.author_client.post(
@@ -331,11 +371,9 @@ class FollowerTest(PostsTestWithHelpers):
 
         response = self.authorized_client.get(reverse('follow_index'))
         #не подписанный пользователь все ещё не должен видеть постов
-        self._check_paginated_page_empty_response(response)
+        self._check_paginated_page_response(response, [])
 
         response = self.follower_client.get(reverse('follow_index'))
         #подписанный пользователь должен увидеть новый пост
-        self._check_paginated_page_response(
-            response,
-            self.author_first_post_text
-        )
+        post_contexts = [PostContext(self.author_first_post_text)]
+        self._check_paginated_page_response(response, post_contexts)
