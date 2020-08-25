@@ -149,7 +149,7 @@ def add_comment(request, username, post_id):
     if request.method == 'POST':
         form = CommentForm(request.POST)
         if not form.is_valid():
-            return render(request, 'posts/add_comment.html', {'form': form})
+            redirect('post', username=username, post_id=post_id)
 
         form.instance.author = request.user
         form.instance.post = get_object_or_404(
@@ -161,7 +161,7 @@ def add_comment(request, username, post_id):
         return redirect('post', username=username, post_id=post_id)
 
     form = CommentForm()
-    return render(request, 'posts/add_comment.html', {'form': form})
+    return redirect('post', username=username, post_id=post_id)
 
 
 @login_required
