@@ -45,7 +45,6 @@ def _prepare_profile_content(profile_user, guest_user=None):
         'following_count': following_count,
         'following': following,
     }
-    print(context)
     return context    
 
 def index(request):
