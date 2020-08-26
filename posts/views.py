@@ -3,8 +3,8 @@ from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.shortcuts import get_object_or_404, redirect, render
 
-from .forms import PostForm, CommentForm
-from .models import Group, Post, Comment, Follow
+from .forms import CommentForm, PostForm
+from .models import Comment, Follow, Group, Post
 
 POSTS_PER_PAGE = 10
 

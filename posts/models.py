@@ -108,5 +108,3 @@ class Follow(models.Model):
         user = self.user
         author = self.author
         return f'Подписка @{user} на @{author}'
-
-
