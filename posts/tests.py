@@ -415,7 +415,7 @@ class FollowerTest(PostsTestWithHelpers):
 
         return Follow.objects.filter(user=follower).count()
 
-    def test_authorized_user_follow_and_unfollow(self):
+    def test_authorized_user_follow(self):
         self.assertEqual(
             self._calculated_follow_count(self.user), 0,
             msg='Не должно быть подписок до начала теста'
@@ -435,12 +435,17 @@ class FollowerTest(PostsTestWithHelpers):
             msg='Не добавилась подписка'
         )
 
+    def test_authorized_user_unfollow(self):
         self.assertEqual(
-            self._calculated_follow_count(self.user, self.author_user), 1,
-            msg='Не добавилась подписка на автора'
+            self._calculated_follow_count(
+                self.follower_user,
+                self.author_user
+            ),
+            1,
+            msg='Должна быть 1 подписка на начало теста'
         )
 
-        response = self.authorized_client.get(
+        response = self.follower_client.get(
             reverse('profile_unfollow', args=(self.author_username,)),
             follow=True
         )
@@ -450,7 +455,11 @@ class FollowerTest(PostsTestWithHelpers):
             msg='Ошибка при попытке отписаться от автора')
 
         self.assertEqual(
-            self._calculated_follow_count(self.user, self.author_user), 0,
+            self._calculated_follow_count(
+                self.follower_user,
+                self.author_user
+            ),
+            0,
             msg='Не уменьшилось количество подписок после отписки'
         )
 
