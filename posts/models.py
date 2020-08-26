@@ -104,6 +104,9 @@ class Follow(models.Model):
         help_text='Пользователь, которого подписываются.',
     )
 
+    class Meta:
+        unique_together = ('user', 'author')
+
     def __str__(self):
         user = self.user
         author = self.author
