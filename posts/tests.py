@@ -2,7 +2,7 @@ from django.contrib.auth import get_user_model
 from django.test import Client, TestCase
 from django.urls import reverse
 
-from .models import Post, Follow
+from .models import Post, Follow, Group
 from django.core.files.uploadedfile import SimpleUploadedFile
 
 User = get_user_model()
@@ -121,6 +121,12 @@ class PostsTest(PostsTestWithHelpers):
             text=self.text_content, author=self.user)
         self.post_context = PostContext(self.text_content)            
 
+        self.group = Group.objects.create(
+            title='Тестовая группа',
+            slug='test_group',
+            description='Тестовое описание группы'
+        )
+
     def test_404(self):
         response = self.authorized_client.get(NOT_EXISTING_URL)
         self.assertEqual(response.status_code, 404)
@@ -236,12 +242,14 @@ class PostsTest(PostsTestWithHelpers):
         post = Post.objects.create(
             author=self.user,
             text=image_post_text_content,
+            group=self.group,
             image=img
         )
 
         urls = [
             reverse('index'),
             reverse('profile', args=(DEFAULT_USERNAME,)),
+            reverse('group', args=(self.group.slug,)),
             reverse('post', args=(DEFAULT_USERNAME,post.id))
         ]
 
