@@ -5,11 +5,15 @@
     <!-- тесты требуют, чтобы в этом template'е был цикл -->
     {% include "base/menu.html" with index=True %}
 
-    {% for post in page %}
-        {% include 'base/post.html' %}
-    {% endfor %}
-    {% if page.has_other_pages %}
-        {% include "base/paginator.html" with items=page paginator=paginator %}
-    {% endif %}
+    {% load cache %}
+    {% cache 20 index_page %}
+        {% for post in page %}
+            {% include 'base/post.html' %}
+            {% endfor %}
+        {% if page.has_other_pages %}
+            {% include "base/paginator.html" with items=page paginator=paginator %}
+        {% endif %}
+    {% endcache %}    
 {% endblock %}
+
 
