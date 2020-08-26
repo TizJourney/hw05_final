@@ -11,9 +11,9 @@ urlpatterns = [
     path('auth/', include('users.urls')),
     path('auth/', include('django.contrib.auth.urls')),
     path('about/', include('django.contrib.flatpages.urls')),
-
-    path('', include('posts.urls')),
     path('admin/', admin.site.urls),
+    
+    path('', include('posts.urls')),
 ]
 
 urlpatterns += [
