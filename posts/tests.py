@@ -15,6 +15,10 @@ DEFAULT_LAST_NAME_TEMPLATE = '{}_last_name'
 DEFAULT_POST_TEXT = 'текст поста'
 
 NOT_EXISTING_URL = '/not_existring_url/'
+FORM_TEXT_ERROR = (
+    'Загрузите правильное изображение. Файл, который вы '
+    'загрузили, поврежден или не является изображением.'
+)
 
 
 def _create_user(username=DEFAULT_USERNAME):
@@ -257,6 +261,27 @@ class PostsTest(PostsTestWithHelpers):
             with self.subTest(url=url):
                 response = self.authorized_client.get(url)
                 self.assertContains(response, '<img')
+
+    def test_post_not_image(self):
+        not_image = SimpleUploadedFile(
+            name='test.txt',
+            content= b'abc',
+            content_type='text/plain'
+        )
+        response = self.authorized_client.post(
+            reverse('new_post'),
+            {
+                'text': DEFAULT_POST_TEXT,
+                'image': not_image,
+            },
+        )
+
+        self.assertFormError(
+            response,
+            'form',
+            'image',
+            errors=FORM_TEXT_ERROR
+        )
 
     def _check_number_comments(self):
         return self.post.comments.all().count()
