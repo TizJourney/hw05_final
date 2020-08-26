@@ -51,8 +51,12 @@ def _prepare_profile_content(profile_user, guest_user=None):
 
 def index(request):
     page_number = request.GET.get('page')
-    post_query = Post.objects.select_related(
-        'author').select_related('group').all()
+    post_query = (
+        Post.objects
+        .select_related('author')
+        .select_related('group')
+        .all()
+    )
 
     context = _prepare_post_content(post_query, page_number)
 
@@ -67,8 +71,12 @@ def group_posts(request, slug):
     page_number = request.GET.get('page')
 
     group = get_object_or_404(Group, slug=slug)
-    group_posts = group.posts.select_related(
-        'author').select_related('group').all()
+    group_posts = (
+        group.posts
+        .select_related('author')
+        .select_related('group')
+        .all()
+    )
 
     context = {'group': group}
     context.update(_prepare_post_content(group_posts, page_number))
@@ -170,9 +178,12 @@ def add_comment(request, username, post_id):
 
 @login_required
 def follow_index(request):
-    follows = Follow.objects.select_related('author').filter(user=request.user)
-    followed_users = list(set([follow.author for follow in follows]))
-    post_query = Post.objects.filter(author__in=followed_users)
+    post_query = (
+        Post.objects
+        .select_related('author')
+        .select_related('group')
+        .filter(author__following__user=request.user)
+    )
 
     context = {'follower': request.user}
 
