@@ -29,6 +29,7 @@ def _prepare_post_content(post_query, page_number):
     page = paginator.get_page(page_number)
     return {'page': page, 'paginator': paginator}
 
+
 def _prepare_profile_content(profile_user, guest_user=None):
     post_count = profile_user.posts.all().count()
     follower_count = profile_user.follower.all().count()
@@ -45,11 +46,13 @@ def _prepare_profile_content(profile_user, guest_user=None):
         'following_count': following_count,
         'following': following,
     }
-    return context    
+    return context
+
 
 def index(request):
     page_number = request.GET.get('page')
-    post_query = Post.objects.all()
+    post_query = Post.objects.select_related(
+        'author').select_related('group').all()
 
     context = _prepare_post_content(post_query, page_number)
 
@@ -64,7 +67,8 @@ def group_posts(request, slug):
     page_number = request.GET.get('page')
 
     group = get_object_or_404(Group, slug=slug)
-    group_posts = group.posts.all()
+    group_posts = group.posts.select_related(
+        'author').select_related('group').all()
 
     context = {'group': group}
     context.update(_prepare_post_content(group_posts, page_number))
@@ -76,13 +80,13 @@ def profile(request, username):
     page_number = request.GET.get('page')
 
     user = get_object_or_404(User, username=username)
-    post_list = user.posts.all()
+    post_list = user.posts.select_related(
+        'author').select_related('group').all()
 
     context = _prepare_post_content(post_list, page_number)
     context.update(_prepare_profile_content(user, request.user))
 
     return render(request, 'posts/profile.html', context)
-
 
 
 def post_view(request, username, post_id):
@@ -193,7 +197,6 @@ def profile_follow(request, username):
     )
 
     return redirect('profile', username=username)
-
 
 @login_required
 def profile_unfollow(request, username):
