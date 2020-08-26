@@ -3,6 +3,7 @@ from django.test import Client, TestCase
 from django.urls import reverse
 
 from .models import Post, Follow
+from django.core.files.uploadedfile import SimpleUploadedFile
 
 User = get_user_model()
 
@@ -221,38 +222,33 @@ class PostsTest(PostsTestWithHelpers):
 
     def test_image_content_pages(self):
         image_post_text_content = 'пост картинкой'
+        small_gif = (
+            b'\x47\x49\x46\x38\x39\x61\x01\x00\x01\x00\x00\x00\x00\x21\xf9\x04'
+            b'\x01\x0a\x00\x01\x00\x2c\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02'
+            b'\x02\x4c\x01\x00\x3b'
+        )        
 
-        #добавим пост с картинкой
-        response = self.authorized_client.post(
-            reverse('new_post'),
-            {
-                'text': image_post_text_content,
-                # 'image': image,
-            },
-            follow=True)
-
-        self.assertEqual(
-            response.status_code, 200,
-            msg='Ошибка вызова api создания нового поста')
-
-        image_post_context = PostContext(
-            image_post_text_content,
-            contain_image=True
+        img = SimpleUploadedFile(
+            name='test.gif',
+            content=small_gif,
+            content_type='image/gif'
         )
-        self._check_content_pages(
-            [image_post_context, self.post_context],
-            self.authorized_client
+        post = Post.objects.create(
+            author=self.user,
+            text=image_post_text_content,
+            image=img
         )
 
-        new_post = Post.objects.latest('pub_date')
-        self._check_single_post(
-            image_post_context,
-            self.authorized_client,
-            DEFAULT_USERNAME,
-            new_post.id
-        )
+        urls = [
+            reverse('index'),
+            reverse('profile', args=(DEFAULT_USERNAME,)),
+            reverse('post', args=(DEFAULT_USERNAME,post.id))
+        ]
 
-
+        for url in urls:
+            with self.subTest(url=url):
+                response = self.authorized_client.get(url)
+                self.assertContains(response, '<img')
 
     def _check_number_comments(self):
         return self.post.comments.all().count()
