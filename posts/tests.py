@@ -32,10 +32,12 @@ def _create_user(username=DEFAULT_USERNAME):
         last_name=DEFAULT_LAST_NAME_TEMPLATE.format(username),
     )
 
+
 class PostContext:
     def __init__(self, post_text, author):
         self.text = post_text
         self.author = author
+
 
 class PostsTestWithHelpers(TestCase):
     def _check_post_content(self, post, post_context):
@@ -71,10 +73,9 @@ class PostsTestWithHelpers(TestCase):
         )
 
         if not post_contexts:
-            #пустая страница, дальше проверять нет смысла
+            # пустая страница, дальше проверять нет смысла
             return
 
-        
         for post_item, context in zip(response.context['page'], post_contexts):
             self.assertIsInstance(
                 post_item,
@@ -92,7 +93,6 @@ class PostsTestWithHelpers(TestCase):
             reverse('profile', kwargs={'username': DEFAULT_USERNAME})
         )
         self._check_paginated_page_response(response, posts_context)
-
 
     def _check_single_post(self, post_context, client, username, post_id):
         response = client.get(
@@ -139,37 +139,37 @@ class PostsTest(PostsTestWithHelpers):
 
     def test_404(self):
         response = self.authorized_client.get(NOT_EXISTING_URL)
-        self.assertEqual(response.status_code, 404) 
+        self.assertEqual(response.status_code, 404)
 
     def test_cache(self):
-        #делаем первый запрос, страница кэшируется
+        # делаем первый запрос, страница кэшируется
         response = self.authorized_client.get(reverse('index'))
         self.assertContains(response, DEFAULT_POST_TEXT)
 
         new_post_text = 'new_post_content'
-        #добавляем новый пост
-        new_post = Post.objects.create(
+        # добавляем новый пост
+        Post.objects.create(
             author=self.user,
             text=new_post_text,
         )
 
-        #делаем второй запрос
+        # делаем второй запрос
         response = self.authorized_client.get(reverse('index'))
-        #в html-коде нету нового поста
+        # в html-коде нету нового поста
         self.assertNotContains(response, new_post_text)
 
-        #делаем второй запрос
+        # делаем второй запрос
         response = self.authorized_client.get(reverse('index'))
-        #в html-выводе страницы нету нового поста
+        # в html-выводе страницы нету нового поста
         self.assertNotContains(response, new_post_text)
 
-        #чистим кэш
+        # чистим кэш
         key = make_template_fragment_key('index_page')
         cache.delete(key)
 
-        #делаем третий запрос
+        # делаем третий запрос
         response = self.authorized_client.get(reverse('index'))
-        #в html-выводе страницы есть содержимое нового поста
+        # в html-выводе страницы есть содержимое нового поста
         self.assertContains(response, new_post_text)
 
     def test_profile_url(self):
@@ -272,7 +272,7 @@ class PostsTest(PostsTestWithHelpers):
             b'\x47\x49\x46\x38\x39\x61\x01\x00\x01\x00\x00\x00\x00\x21\xf9\x04'
             b'\x01\x0a\x00\x01\x00\x2c\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02'
             b'\x02\x4c\x01\x00\x3b'
-        )        
+        )
 
         img = SimpleUploadedFile(
             name='test.gif',
@@ -301,7 +301,7 @@ class PostsTest(PostsTestWithHelpers):
     def test_post_not_image(self):
         not_image = SimpleUploadedFile(
             name='test.txt',
-            content= b'abc',
+            content=b'abc',
             content_type='text/plain'
         )
         response = self.authorized_client.post(
@@ -381,21 +381,22 @@ class PostsTest(PostsTestWithHelpers):
 
 class FollowerTest(PostsTestWithHelpers):
     def setUp(self):
-        #автор, авторизован
+        # автор, авторизован
         self.author_username = 'author'
         self.author_user = _create_user(self.author_username)
 
         self.author_client = Client()
         self.author_client.force_login(self.author_user)
         self.author_first_post_text = 'first post'
-        #пользователь, ни на кого не подписан
+
+        # пользователь, ни на кого не подписан
         self.user = _create_user()
 
-        #авторизованный клиент пользователя
+        # авторизованный клиент пользователя
         self.authorized_client = Client()
         self.authorized_client.force_login(self.user)
 
-        #пользователь, подписан на автора, авторизован
+        # пользователь, подписан на автора, авторизован
         self.follower_username = 'follower'
         self.follower_user = _create_user(self.follower_username)
         self.follower_client = Client()
@@ -455,14 +456,14 @@ class FollowerTest(PostsTestWithHelpers):
 
     def test_author_posts_on_follower(self):
         response = self.authorized_client.get(reverse('follow_index'))
-        #не должен видеть постов
+        # не должен видеть постов
         self._check_paginated_page_response(response, [])
 
         response = self.follower_client.get(reverse('follow_index'))
-        #не должен видеть постов
+        # не должен видеть постов
         self._check_paginated_page_response(response, [])
 
-        #автор пишет пост
+        # автор пишет пост
         response = self.author_client.post(
             reverse('new_post'),
             {
@@ -474,11 +475,11 @@ class FollowerTest(PostsTestWithHelpers):
             msg='Ошибка вызова api создания поста')
 
         response = self.authorized_client.get(reverse('follow_index'))
-        #не подписанный пользователь все ещё не должен видеть постов
+        # неподписанный пользователь все ещё не должен видеть постов
         self._check_paginated_page_response(response, [])
 
         response = self.follower_client.get(reverse('follow_index'))
-        #подписанный пользователь должен увидеть новый пост
+        # подписанный пользователь должен увидеть новый пост
         post_contexts = [
             PostContext(self.author_first_post_text, self.author_user)
         ]

@@ -4,7 +4,7 @@ from django.core.paginator import Paginator
 from django.shortcuts import get_object_or_404, redirect, render
 
 from .forms import CommentForm, PostForm
-from .models import Comment, Follow, Group, Post
+from .models import Follow, Group, Post
 
 POSTS_PER_PAGE = 10
 
@@ -184,10 +184,10 @@ def follow_index(request):
 
 @login_required
 def profile_follow(request, username):
-    #нельзя подписываться на несуществующего пользователя
+    # нельзя подписываться на несуществующего пользователя
     author = get_object_or_404(User, username=username)
 
-    #нельзя подписываться на самого себя
+    # нельзя подписываться на самого себя
     if author == request.user:
         return redirect('profile', username=username)
 
@@ -198,12 +198,13 @@ def profile_follow(request, username):
 
     return redirect('profile', username=username)
 
+
 @login_required
 def profile_unfollow(request, username):
-    #нельзя отписываться от несуществующего пользователя
+    # нельзя отписываться от несуществующего пользователя
     author = get_object_or_404(User, username=username)
 
-    #нельзя отписаться от несуществующей подписки
+    # нельзя отписаться от несуществующей подписки
     follow = get_object_or_404(
         Follow,
         author=author,
