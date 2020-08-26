@@ -4,6 +4,8 @@ from django.urls import reverse
 
 from .models import Post, Follow, Group
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.core.cache import cache
+from django.core.cache.utils import make_template_fragment_key
 
 User = get_user_model()
 
@@ -135,8 +137,39 @@ class PostsTest(PostsTestWithHelpers):
 
     def test_404(self):
         response = self.authorized_client.get(NOT_EXISTING_URL)
-        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.status_code, 404) 
 
+    def test_cache(self):
+
+        #делаем первый запрос, страница кэшируется
+        response = self.authorized_client.get(reverse('index'))
+        self.assertContains(response, DEFAULT_POST_TEXT)
+
+        new_post_text = 'new_post_content'
+        #добавляем новый пост
+        new_post = Post.objects.create(
+            author=self.user,
+            text=new_post_text,
+        )
+
+        #делаем второй запрос
+        response = self.authorized_client.get(reverse('index'))
+        #в html-коде нету нового поста
+        self.assertNotContains(response, new_post_text)
+
+        #делаем второй запрос
+        response = self.authorized_client.get(reverse('index'))
+        #в html-выводе страницы нету нового поста
+        self.assertNotContains(response, new_post_text)
+
+        #чистим кэш
+        key = make_template_fragment_key('index_page')
+        cache.delete(key)
+
+        #делаем третий запрос
+        response = self.authorized_client.get(reverse('index'))
+        #в html-выводе страницы есть содержимое нового поста
+        self.assertContains(response, new_post_text)
 
     def test_profile_url(self):
         response = self.authorized_client.get(
