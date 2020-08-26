@@ -14,14 +14,16 @@ class GroupAdmin(admin.ModelAdmin):
     list_display = ('pk', 'title', 'slug', 'description',)
     search_fields = ('title', 'slug',)
 
+
 class CommentAdmin(admin.ModelAdmin):
     list_display = ('pk', 'author', 'post', 'text', 'created',)
     search_fields = ('text',)
     list_filter = ('created',)
 
+
 class FollowAdmin(admin.ModelAdmin):
     list_display = ('pk', 'author', 'user',)
-    list_filter = ('author','user',)
+    list_filter = ('author', 'user',)
 
 
 admin.site.register(Group, GroupAdmin)
