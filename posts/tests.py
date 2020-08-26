@@ -135,12 +135,13 @@ class PostsTest(PostsTestWithHelpers):
             description='Тестовое описание группы'
         )
 
+        cache.clear()
+
     def test_404(self):
         response = self.authorized_client.get(NOT_EXISTING_URL)
         self.assertEqual(response.status_code, 404) 
 
     def test_cache(self):
-
         #делаем первый запрос, страница кэшируется
         response = self.authorized_client.get(reverse('index'))
         self.assertContains(response, DEFAULT_POST_TEXT)
