@@ -12,8 +12,6 @@ urlpatterns = [
     path('auth/', include('django.contrib.auth.urls')),
     path('about/', include('django.contrib.flatpages.urls')),
     path('admin/', admin.site.urls),
-
-    path('', include('posts.urls')),
 ]
 
 urlpatterns += [
@@ -29,6 +27,11 @@ urlpatterns += [
         {'url': '/spec/'},
         name='about_author'),
 ]
+    
+urlpatterns += [
+    path('', include('posts.urls')),
+]
+
 
 if settings.DEBUG:
     urlpatterns += static(
