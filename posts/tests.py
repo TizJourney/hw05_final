@@ -31,14 +31,16 @@ def _create_user(username=DEFAULT_USERNAME):
     )
 
 class PostContext:
-    def __init__(self, post_text, contain_image=False):
+    def __init__(self, post_text, author):
         self.text = post_text
-        self.contain_image = contain_image
-
+        self.author = author
 
 class PostsTestWithHelpers(TestCase):
     def _check_post_content(self, post, post_context):
         self.assertIsInstance(post, Post, msg='Тип содержимого не пост')
+        self.assertEqual(
+            post.author, post_context.author,
+            msg='Автор поста не совпадает')
         self.assertEqual(
             post.text, post_context.text,
             msg='Текст поста не соответствует')
@@ -123,7 +125,7 @@ class PostsTest(PostsTestWithHelpers):
         self.text_content = DEFAULT_POST_TEXT
         self.post = Post.objects.create(
             text=self.text_content, author=self.user)
-        self.post_context = PostContext(self.text_content)            
+        self.post_context = PostContext(self.text_content, self.user)
 
         self.group = Group.objects.create(
             title='Тестовая группа',
@@ -161,7 +163,7 @@ class PostsTest(PostsTestWithHelpers):
             msg='Количество постов не увеличилось на 1')
 
         new_post = Post.objects.latest('pub_date')
-        new_post_context = PostContext(new_post_text)
+        new_post_context = PostContext(new_post_text, self.user)
         self._check_post_content(new_post, new_post_context)
 
     def test_create_new_post_not_authorized(self):
@@ -218,7 +220,7 @@ class PostsTest(PostsTestWithHelpers):
             response.status_code, 200,
             msg='Ошибка вызова api редактирования поста')
 
-        edited_post_context = PostContext(edited_text_content)
+        edited_post_context = PostContext(edited_text_content, self.user)
         self._check_content_pages(
             [edited_post_context],
             self.authorized_client
@@ -254,7 +256,7 @@ class PostsTest(PostsTestWithHelpers):
             reverse('index'),
             reverse('profile', args=(DEFAULT_USERNAME,)),
             reverse('group', args=(self.group.slug,)),
-            reverse('post', args=(DEFAULT_USERNAME,post.id))
+            reverse('post', args=(DEFAULT_USERNAME, post.id))
         ]
 
         for url in urls:
@@ -418,7 +420,6 @@ class FollowerTest(PostsTestWithHelpers):
         )
 
     def test_author_posts_on_follower(self):
-
         response = self.authorized_client.get(reverse('follow_index'))
         #не должен видеть постов
         self._check_paginated_page_response(response, [])
@@ -444,5 +445,7 @@ class FollowerTest(PostsTestWithHelpers):
 
         response = self.follower_client.get(reverse('follow_index'))
         #подписанный пользователь должен увидеть новый пост
-        post_contexts = [PostContext(self.author_first_post_text)]
+        post_contexts = [
+            PostContext(self.author_first_post_text, self.author_user)
+        ]
         self._check_paginated_page_response(response, post_contexts)
